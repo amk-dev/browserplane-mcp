@@ -1,6 +1,10 @@
 import { Hono } from "hono";
+import { authController } from "./auth.controller";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
+
+// Mount auth routes
+app.route("/api/auth", authController);
 
 app.get("/", (c) => {
   return c.text("Hello Hono!");

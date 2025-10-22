@@ -19,7 +19,10 @@
       "database_id": "7c976f4a-ad7a-43f7-9621-85cfb723449d",
       "migrations_dir": "drizzle"
     }
-  ]
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:8787"
+  }
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
