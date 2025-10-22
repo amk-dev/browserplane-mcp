@@ -2,7 +2,24 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "api",
   "main": "src/index.ts",
-  "compatibility_date": "2025-10-22"
+  "compatibility_date": "2025-10-22",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BROWSER_PROXY",
+        "class_name": "BrowserProxy",
+        "script_name": "api"
+      }
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "browserplane-mcp-prod",
+      "database_id": "7c976f4a-ad7a-43f7-9621-85cfb723449d",
+      "migrations_dir": "drizzle"
+    }
+  ]
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
