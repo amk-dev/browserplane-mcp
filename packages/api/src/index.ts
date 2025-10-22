@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { authController } from "./auth.controller";
+import { authController } from "./controllers/auth.controller";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
