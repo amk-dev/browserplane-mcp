@@ -7,6 +7,7 @@
 
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 
 // Dummy drizzle instance for schema generation only
 // The CLI just needs to know we're using Drizzle + SQLite
@@ -17,6 +18,14 @@ export const auth = betterAuth({
   database: drizzleAdapter(dummyDb, {
     provider: "sqlite",
   }),
+
+  // Social providers
+  socialProviders: {
+    google: {
+      clientId: "dummy",
+      clientSecret: "dummy",
+    },
+  },
 
   // Auth methods
   emailAndPassword: {
@@ -29,4 +38,9 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
   },
+
+  // Plugins
+  plugins: [
+    bearer(), // Enable bearer token authentication for WebSocket and API clients
+  ],
 });

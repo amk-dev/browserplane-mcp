@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createAuth, type Auth } from "./lib/auth";
+import { createAuth, type Auth } from "../lib/auth";
 
 type Variables = {
   auth: Auth;
