@@ -1,10 +1,17 @@
 import { DurableObject } from "cloudflare:workers";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+
+const toolExecutionRequestSchema = z.object({
+  tool: z.string(),
+  input: z.record(z.unknown()),
+  requestId: z.string(),
+});
 
 type PendingRequest = {
   resolve: (value: CallToolResult) => void;
   reject: (error: Error) => void;
-  timeoutId: number;
+  timeoutId: ReturnType<typeof setTimeout>;
 };
 
 export class BrowserProxy extends DurableObject {
@@ -13,21 +20,15 @@ export class BrowserProxy extends DurableObject {
   constructor(ctx: DurableObjectState, env: CloudflareBindings) {
     super(ctx, env);
 
-    // Log when DO is constructed (happens on wake from hibernation too)
-    console.log(
-      "BrowserProxy constructor - active WebSockets:",
-      this.ctx.getWebSockets().length
-    );
-
     // Restore any hibernated WebSockets
     this.ctx.getWebSockets().forEach((ws) => {
-      const attachment = ws.deserializeAttachment();
-      if (attachment) {
-        console.log(
-          "Restored WebSocket - connected at:",
-          new Date(attachment.connectedAt)
-        );
-      }
+      // const attachment = ws.deserializeAttachment();
+      // if (attachment) {
+      //   console.log(
+      //     "Restored WebSocket - connected at:",
+      //     new Date(attachment.connectedAt)
+      //   );
+      // }
     });
 
     // Set up auto-response for ping/pong without waking the DO
@@ -51,7 +52,7 @@ export class BrowserProxy extends DurableObject {
     }
 
     return new Response("WebSocket upgrade or /execute-tool POST expected", {
-      status: 426
+      status: 426,
     });
   }
 
@@ -63,9 +64,6 @@ export class BrowserProxy extends DurableObject {
     // Close any existing connections (browser reconnecting)
     const existingConnections = this.ctx.getWebSockets();
     if (existingConnections.length > 0) {
-      console.log(
-        `Closing ${existingConnections.length} existing connection(s) - browser reconnecting`
-      );
       existingConnections.forEach((ws) => {
         ws.close(1000, "New connection established");
       });
@@ -83,17 +81,6 @@ export class BrowserProxy extends DurableObject {
       connectedAt: Date.now(),
     });
 
-    console.log("WebSocket connection accepted");
-
-    // Send welcome message to browser
-    server.send(
-      JSON.stringify({
-        type: "hello",
-        message: "Connected to Durable Object",
-        timestamp: Date.now(),
-      })
-    );
-
     // Return the client side of the WebSocket
     return new Response(null, {
       status: 101,
@@ -110,10 +97,12 @@ export class BrowserProxy extends DurableObject {
 
     try {
       const messageStr =
-        typeof message === "string" ? message : new TextDecoder().decode(message);
+        typeof message === "string"
+          ? message
+          : new TextDecoder().decode(message);
       const data = JSON.parse(messageStr);
 
-      // Handle tool execution responses
+      // Handle tool execution
       if (data.type === "tool-response" && data.requestId) {
         const pending = this.pendingRequests.get(data.requestId);
 
@@ -129,20 +118,13 @@ export class BrowserProxy extends DurableObject {
           // Clean up
           this.pendingRequests.delete(data.requestId);
         } else {
-          console.warn("Received response for unknown requestId:", data.requestId);
+          console.warn(
+            "Received response for unknown requestId:",
+            data.requestId
+          );
         }
         return;
       }
-
-      // Handle other message types (echo, etc.)
-      console.log("Non-tool message received:", data.type);
-      ws.send(
-        JSON.stringify({
-          type: "echo",
-          originalMessage: data,
-          receivedAt: Date.now(),
-        })
-      );
     } catch (error) {
       console.error("Error handling message:", error);
       ws.send(
@@ -164,14 +146,8 @@ export class BrowserProxy extends DurableObject {
     reason: string,
     wasClean: boolean
   ) {
-    console.log(`WebSocket closed: ${code} - ${reason} (clean: ${wasClean})`);
-
     // Reject all pending tool requests immediately
     if (this.pendingRequests.size > 0) {
-      console.log(
-        `Rejecting ${this.pendingRequests.size} pending request(s) due to disconnect`
-      );
-
       this.pendingRequests.forEach(({ reject, timeoutId }) => {
         clearTimeout(timeoutId);
         reject(new Error("Browser disconnected"));
@@ -197,9 +173,21 @@ export class BrowserProxy extends DurableObject {
    */
   private async handleToolExecution(request: Request): Promise<Response> {
     try {
-      const { tool, input, requestId } = await request.json();
+      // Parse and validate request body with Zod
+      const requestBody = await request.json();
+      const parseResult = toolExecutionRequestSchema.safeParse(requestBody);
 
-      console.log("Tool execution request:", { tool, input, requestId });
+      if (!parseResult.success) {
+        return new Response(
+          JSON.stringify({
+            error: "Invalid request body",
+            details: parseResult.error.format(),
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const { tool, input, requestId } = parseResult.data;
 
       // Check if browser is connected
       const websockets = this.ctx.getWebSockets();
@@ -219,7 +207,7 @@ export class BrowserProxy extends DurableObject {
         const timeoutId = setTimeout(() => {
           this.pendingRequests.delete(requestId);
           reject(new Error("Tool execution timeout (30s)"));
-        }, 30000) as unknown as number;
+        }, 30000);
 
         this.pendingRequests.set(requestId, {
           resolve,
@@ -238,18 +226,13 @@ export class BrowserProxy extends DurableObject {
         })
       );
 
-      console.log("Sent tool request to browser, waiting for response...");
-
       // Wait for browser response
       const result = await responsePromise;
-
-      console.log("Received response from browser:", result);
 
       return new Response(JSON.stringify(result), {
         headers: { "Content-Type": "application/json" },
       });
     } catch (error) {
-      console.error("Error executing tool:", error);
       return new Response(
         JSON.stringify({
           error: "Tool execution failed",
