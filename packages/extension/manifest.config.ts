@@ -17,6 +17,14 @@ export default defineManifest({
   permissions: [
     'sidePanel',
     'contentSettings',
+    'storage',
+  ],
+  background: {
+    service_worker: 'src/background/service-worker.ts',
+    type: 'module',
+  },
+  host_permissions: [
+    'http://localhost:8787/*',
   ],
   content_scripts: [{
     js: ['src/content/main.tsx'],
