@@ -8,6 +8,9 @@
 // Auth tables (Better Auth)
 export * from "./auth.schema";
 
+// Browser tables
+export * from "./browser.schema";
+
 // Add more schema exports as needed:
 // export * from "./connections.schema";
 // export * from "./events.schema";
