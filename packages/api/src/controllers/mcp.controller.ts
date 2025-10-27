@@ -1,11 +1,23 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { experimental_createMcpHandler } from "agents/mcp";
-import { z } from "zod";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { eq } from "drizzle-orm";
 import { createDb } from "../db";
 import { browser } from "../db/browser.schema";
+import {
+  testTool,
+  captureScreenshotTool,
+  runJavascriptTool,
+  listTabsTool,
+} from "../lib/tools";
+
+const tools = [
+  testTool,
+  captureScreenshotTool,
+  runJavascriptTool,
+  listTabsTool,
+];
 
 /**
  * Factory function that creates MCP server for a specific browser
@@ -17,19 +29,8 @@ function createMcpServerForBrowser(browserId: string, env: CloudflareBindings) {
     version: "0.0.1",
   });
 
-  server.registerTool(
-    "testTool",
-    {
-      title: "Test Tool - testing browser communication",
-      description:
-        "A test tool that forwards execution to the browser extension",
-      inputSchema: {
-        name: z.string().describe("Your name"),
-      },
-    },
-    async (input) => {
-      console.log("testTool called with input:", input);
-
+  for (const tool of tools) {
+    server.registerTool(tool.name, tool.def, async (input) => {
       // Get DO stub for this browser (browserId from closure)
       const id = env.BROWSER_PROXY.idFromName(browserId);
       const stub = env.BROWSER_PROXY.get(id);
@@ -40,7 +41,7 @@ function createMcpServerForBrowser(browserId: string, env: CloudflareBindings) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tool: "testTool",
+            tool: tool.name,
             input,
             requestId: crypto.randomUUID(),
           }),
@@ -49,13 +50,53 @@ function createMcpServerForBrowser(browserId: string, env: CloudflareBindings) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Tool execution failed");
-      }
 
+        if (error.error instanceof Error) {
+          throw new Error(error.error);
+        }
+      }
       const result = await response.json();
       return result;
-    }
-  );
+    });
+  }
+
+  // server.registerTool(
+  //   "testTool",
+  //   {
+  //     title: "Test Tool - testing browser communication",
+  //     description:
+  //       "A test tool that forwards execution to the browser extension",
+  //     inputSchema: {
+  //       name: z.string().describe("Your name"),
+  //     },
+  //   },
+  //   async (input) => {
+  //     // Get DO stub for this browser (browserId from closure)
+  //     const id = env.BROWSER_PROXY.idFromName(browserId);
+  //     const stub = env.BROWSER_PROXY.get(id);
+
+  //     // Forward tool execution to DO
+  //     const response = await stub.fetch(
+  //       new Request("http://do/execute-tool", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           tool: "testTool",
+  //           input,
+  //           requestId: crypto.randomUUID(),
+  //         }),
+  //       })
+  //     );
+
+  //     if (!response.ok) {
+  //       const error = await response.json();
+  //       throw new Error(error.error || "Tool execution failed");
+  //     }
+
+  //     const result = await response.json();
+  //     return result;
+  //   }
+  // );
 
   return server;
 }

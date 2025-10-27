@@ -1,8 +1,10 @@
 import { WebSocketServer } from "../lib/websocket-server";
 import type { ToolExecutionMessage } from "../types/websocket.types";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { getActiveTabId, getAllTabs } from "../lib/extension-helpers";
 
 // API base URL - should match your Cloudflare Workers dev server
+// @CLAUDE-CODE: move to an environment variable
 const API_BASE_URL = "http://localhost:8787";
 
 let wsServer: WebSocketServer | null = null;
@@ -78,7 +80,9 @@ async function handleToolExecution(message: ToolExecutionMessage) {
           content: [
             {
               type: "text",
-              text: `Error executing tool: ${error instanceof Error ? error.message : String(error)}`,
+              text: `Error executing tool: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
             },
           ],
           isError: true,
@@ -107,17 +111,136 @@ async function executeToolByName(
         content: [
           {
             type: "text",
-            text: `Test tool executed successfully with input: ${JSON.stringify(input)}`,
+            text: `Test tool executed successfully with input: ${JSON.stringify(
+              input
+            )}`,
           },
         ],
       };
 
-    // Add more tool handlers here
-    // case "navigate":
-    //   return await navigateTool(input);
-    // case "click":
-    //   return await clickTool(input);
-    // etc.
+    case "captureScreenshot": {
+      const tabId = await getActiveTabId();
+      if (!tabId) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No active tab found. Cannot capture screenshot.",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        const dataUrl = await chrome.tabs.captureVisibleTab({
+          format: "jpeg",
+          quality: 90,
+        });
+
+        // Extract base64 data from data URL
+        const base64Data = dataUrl.split(",")[1];
+
+        return {
+          content: [
+            {
+              type: "image",
+              data: base64Data,
+              mimeType: "image/jpeg",
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to capture screenshot: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    case "runJavascript": {
+      const code = input.code as string;
+      const targetTabId = (input.tabId as number | undefined) ?? (await getActiveTabId());
+
+      if (!targetTabId) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No active tab found. Cannot execute JavaScript.",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        // Execute JavaScript using userScripts API (same as old implementation)
+        const result = await chrome.userScripts.execute({
+          target: { tabId: targetTabId },
+          world: "MAIN",
+          js: [
+            {
+              code: code,
+            },
+          ],
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to execute JavaScript: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    case "listTabs": {
+      try {
+        const tabs = await getAllTabs();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(tabs, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to list tabs: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
 
     default:
       return {
