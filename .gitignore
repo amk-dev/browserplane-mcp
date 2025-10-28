@@ -1,1 +1,12 @@
 node_modules/
+scratchpad/
+
+# Environment files with secrets
+.dev.vars
+.env
+
+# Wrangler local state
+.wrangler/
+
+# OS files
+.DS_Store

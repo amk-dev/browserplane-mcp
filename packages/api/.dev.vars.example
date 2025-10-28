@@ -1,0 +1,15 @@
+# Local development environment variables
+# Copy this file to .dev.vars and fill in your actual values
+# .dev.vars is gitignored and should never be committed
+
+# Better Auth Configuration
+BETTER_AUTH_SECRET=your-secret-key-here-min-32-chars
+
+# Google OAuth Credentials
+# Get these from: https://console.cloud.google.com/apis/credentials
+GOOGLE_CLIENT_ID=SAMPLE_GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=SAMPLE_GOOGLE_CLIENT_SECRET
+
+# Cloudflare Configuration (if needed)
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_DATABASE_ID=your-d1-database-id

@@ -15,13 +15,35 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "browserplane-mcp-prod",
+      "database_name": "browserplane-mcp-dev",
       "database_id": "7c976f4a-ad7a-43f7-9621-85cfb723449d",
       "migrations_dir": "drizzle"
     }
   ],
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "mcp.browserplane.com",
+      "custom_domain": true
+    }
+  ],
   "vars": {
     "BETTER_AUTH_URL": "http://localhost:8787"
+  },
+  "env": {
+    "production": {
+      "vars": {
+        "BETTER_AUTH_URL": "https://mcp.browserplane.com"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "browserplane-mcp-prod",
+          "database_id": "YOUR_PRODUCTION_DATABASE_ID",
+          "migrations_dir": "drizzle"
+        }
+      ]
+    }
   }
   // "compatibility_flags": [
   //   "nodejs_compat"
