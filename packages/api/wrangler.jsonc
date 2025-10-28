@@ -7,16 +7,21 @@
     "bindings": [
       {
         "name": "BROWSER_PROXY",
-        "class_name": "BrowserProxy",
-        "script_name": "api"
+        "class_name": "BrowserProxy"
       }
     ]
   },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["BrowserProxy"]
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "browserplane-mcp-dev",
-      "database_id": "7c976f4a-ad7a-43f7-9621-85cfb723449d",
+      "database_id": "b224ab03-83e8-4f89-9e51-cc13b3f212fc",
       "migrations_dir": "drizzle"
     }
   ],
@@ -35,11 +40,19 @@
       "vars": {
         "BETTER_AUTH_URL": "https://mcp.browserplane.com"
       },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "BROWSER_PROXY",
+            "class_name": "BrowserProxy"
+          }
+        ]
+      },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "browserplane-mcp-prod",
-          "database_id": "YOUR_PRODUCTION_DATABASE_ID",
+          "database_id": "7c976f4a-ad7a-43f7-9621-85cfb723449d",
           "migrations_dir": "drizzle"
         }
       ]
